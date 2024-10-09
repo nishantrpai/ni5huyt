@@ -63,6 +63,8 @@ function keyPressed() {
     } else {
       stopRecording();
     }
+  } else if (key === 's' || key === 'S') {
+    takeScreenshot();
   }
 }
 
@@ -110,4 +112,17 @@ function exportVideo() {
   a.download = 'raindrops_loop.webm';
   a.click();
   window.URL.revokeObjectURL(url);
+}
+
+function takeScreenshot() {
+  let canvas = document.querySelector('canvas');
+  let dataURL = canvas.toDataURL('image/png');
+  let a = document.createElement('a');
+  document.body.appendChild(a);
+  a.style.display = 'none';
+  a.href = dataURL;
+  a.download = 'raindrops_screenshot.png';
+  a.click();
+  document.body.removeChild(a);
+  console.log("Screenshot saved");
 }
