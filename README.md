@@ -1,0 +1,1 @@
+clips are generally short, so need to loop clips to make them longer and then add audio and crop
