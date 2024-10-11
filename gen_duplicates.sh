@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Set the count variable
-count=30
+count=70
 
 # Check if output1.mp4 exists
 if [ ! -f output1.mp4 ]; then
