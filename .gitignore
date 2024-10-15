@@ -2,3 +2,4 @@
 *.webm
 *.mp3
 *.aae
+.DS_Store
