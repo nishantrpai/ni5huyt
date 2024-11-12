@@ -26,12 +26,13 @@ echo "Creating temporary looped input video to match the length of input.mp3..."
 ffmpeg -f concat -safe 0 -i list.txt -t "$mp3_duration" -vf "fps=60" -c:v libx264 -preset ultrafast -crf 18 temp_looped_input.mp4
 
 echo "Merging temporary looped input video with input.mp3..."
-ffmpeg -i temp_looped_input.mp4 -i input.mp3 -c:v copy -c:a aac -strict experimental output.mp4
+ffmpeg -i temp_looped_input.mp4 -i input.mp3 -c:v copy -c:a aac -strict experimental output1.mp4
 
 echo "Process completed. Output file: output.mp4"
 echo "Temporary looped video file: temp_looped_input.mp4"
 
 # Cleanup
+rm temp_looped_input.mp4
 rm list.txt
 
 # Note: This script assumes that 'input.mp4' and 'input.mp3' are in the same directory as the script.
