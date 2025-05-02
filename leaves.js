@@ -6,6 +6,7 @@ let chunks = [];
 let startTime = 0;
 let lastLogTime = 0;
 let branch;
+let recorder; // MediaRecorder variable declaration
 
 function setup() {
   createCanvas(windowWidth, windowHeight);
