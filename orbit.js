@@ -1,108 +1,180 @@
-let rocks = [];
-let core;
-let gravityStrength = 0.01;
-let maxGravity = 0.3;
+let stones = [];
+let coreSize = 40;
 let rotation = 0;
-let recording = false;
+let glowIntensity = 0;
+let recordingEnabled = false;
 let chunks = [];
 let recorder;
 
 function setup() {
   createCanvas(windowWidth, windowHeight, WEBGL);
-  core = createVector(0, 0, 0); // In WEBGL mode, (0,0,0) is the center
-  for (let i = 0; i < 100; i++) {
-    rocks.push(new Rock());
-  }
-  angleMode(DEGREES);
+  createOrbitSystem(80); // Reduced number for better visibility
   setupRecorder();
 }
 
-function windowResized() {
-  resizeCanvas(windowWidth, windowHeight);
+function createOrbitSystem(numStones) {
+  for (let i = 0; i < numStones; i++) {
+    stones.push(new Stone());
+  }
 }
 
 function draw() {
   background(10);
   
-  // Add ambient light for better 3D visualization
-  ambientLight(150);
-  pointLight(255, 255, 255, 0, 0, 200);
+  // Lighting setup
+  ambientLight(60);
+  pointLight(200, 200, 255, 0, 0, 0);
   
-  // Rotate the entire system
+  // Camera controls and rotation
+  orbitControl(0.3, 0.3);
   rotateY(rotation);
-  rotateX(60); // Tilt for isometric-like view
-  rotation += 0.11;
+  rotation += 0.005;
+  
+  // Update glow intensity
+  glowIntensity = 150 + sin(frameCount * 0.05) * 50;
 
-  // Draw the core as a 3D sphere
+  // Draw glowing core
   push();
   noStroke();
-  fill(250,250, 250);
-  sphere(20); // belief core
+  emissiveMaterial(200, 200, 255, glowIntensity);
+  sphere(coreSize);
+  ambientLight(0, 50, 100);
   pop();
 
-  // ramp gravity up to max, then hold
-  if (gravityStrength < maxGravity) {
-    gravityStrength += 0.0005;
-  }
-
-  for (let r of rocks) {
-    r.update();
-    r.show();
+  // Update and draw all stones
+  for (let s of stones) {
+    s.update();
+    s.show();
   }
 }
 
-class Rock {
+class Stone {
   constructor() {
-    let angle = random(10);
-    let angleY = random(10);
-    let radius = random(100, 150);
+    // Initialize in a random orbital position
+    let phi = random(TWO_PI);
+    let theta = random(TWO_PI);
+    let radius = random(100, 250);
     
-    // Create position using spherical coordinates for true 3D distribution
-    let x = radius * sin(angle) * cos(angleY);
-    let y = radius * sin(angle) * sin(angleY);
-    let z = radius * cos(angle);
-    this.pos = createVector(x, y, z);
+    this.pos = createVector(
+      radius * sin(theta) * cos(phi),
+      radius * sin(theta) * sin(phi),
+      radius * cos(theta)
+    );
     
-    // tangential velocity for orbit (calculate perpendicular vector)
-    let toCenter = p5.Vector.sub(core, this.pos).normalize();
-    let perpendicular = createVector(random(-1, 1), random(-1, 1), random(-1, 1));
-    perpendicular.cross(toCenter);
-    perpendicular.normalize();
-    perpendicular.mult(sqrt(maxGravity * 1000 / radius));
-    
-    this.vel = perpendicular;
+    // Initialize velocity for orbital motion
+    this.vel = this.getInitialVelocity();
     this.acc = createVector(0, 0, 0);
-    this.gray = random(10, 100);
-    this.size = random(1, 3);
+    
+    // Visual properties
+    this.active = true;
+    this.color = color(random(180, 220), random(180, 255), random(200, 255));
+    this.size = random(2, 4);
+    this.glow = 150;
+    this.pulseRate = random(0.03, 0.08);
+  }
+
+  getInitialVelocity() {
+    // Calculate a velocity vector perpendicular to the position vector
+    // This creates an initial orbital motion
+    let perpendicular = createVector(
+      -this.pos.y + random(-0.2, 0.2),
+      this.pos.x + random(-0.2, 0.2),
+      random(-0.2, 0.2)
+    );
+    return perpendicular.normalize().mult(random(1.5, 2.5));
   }
 
   update() {
-    let force = p5.Vector.sub(core, this.pos);
-    let d = max(force.mag(), -50,-100); // Use max instead of constrain for proper behavior
-    force.setMag((gravityStrength * 2000) / (d * d));
-    this.acc = force;
+    // Reset acceleration
+    this.acc.mult(0);
+    
+    // Calculate gravitational force
+    let gravityVector = createVector(-this.pos.x, -this.pos.y, -this.pos.z);
+    let distanceSquared = gravityVector.magSq();
+    let gravityStrength = 150 / distanceSquared; // Adjusted gravity constant
+    gravityVector.normalize().mult(gravityStrength);
+    
+    // Apply gravity
+    this.acc.add(gravityVector);
+    
+    // Apply slight perturbation for more interesting motion
+    if (frameCount % 60 === 0) {
+      this.acc.add(p5.Vector.random3D().mult(0.01));
+    }
+    
+    // Update velocity and position
     this.vel.add(this.acc);
-    this.vel.limit(20); // prevent instability
+    this.vel.mult(0.995); // Slight drag to maintain stable orbits
     this.pos.add(this.vel);
-    if(gravityStrength < 0.5)
-      gravityStrength += 0.000001;
-    // console.log(gravityStrength);
+    
+    // Update glow effect
+    this.glow = 150 + sin(frameCount * this.pulseRate) * 50;
+    
+    // Keep stones within bounds
+    let dist = this.pos.mag();
+    if (dist > 300) {
+      this.pos.mult(300/dist);
+      this.vel.mult(0.8); // Reduce velocity when hitting boundary
+    }
   }
 
   show() {
     push();
     translate(this.pos.x, this.pos.y, this.pos.z);
     noStroke();
-    // fill(this.gray);
+    emissiveMaterial(red(this.color), green(this.color), blue(this.color), this.glow);
     sphere(this.size);
     pop();
   }
 }
 
-// Handle keyboard input for screenshots and recording
+// Recording functionality
+function setupRecorder() {
+  let canvas = document.querySelector('canvas');
+  if (canvas) {
+    let stream = canvas.captureStream(60);
+    recorder = new MediaRecorder(stream, { mimeType: 'video/webm; codecs=vp9' });
+    
+    recorder.ondataavailable = e => {
+      if (e.data.size) {
+        chunks.push(e.data);
+      }
+    };
+    
+    recorder.onstop = exportVideo;
+  }
+}
+
+function exportVideo() {
+  let blob = new Blob(chunks, { 'type': 'video/webm' });
+  let url = URL.createObjectURL(blob);
+  let a = document.createElement('a');
+  document.body.appendChild(a);
+  a.style.display = 'none';
+  a.href = url;
+  a.download = 'orbit_system.webm';
+  a.click();
+  window.URL.revokeObjectURL(url);
+}
+
+function takeScreenshot() {
+  let canvas = document.querySelector('canvas');
+  if (canvas) {
+    let dataURL = canvas.toDataURL('image/png');
+    let a = document.createElement('a');
+    document.body.appendChild(a);
+    a.style.display = 'none';
+    a.href = dataURL;
+    a.download = 'orbit_system_screenshot.png';
+    a.click();
+    document.body.removeChild(a);
+    console.log("Screenshot saved");
+  }
+}
+
 function keyPressed() {
   if (key === 'r' || key === 'R') {
-    if (!recording) {
+    if (!recordingEnabled) {
       startRecording();
     } else {
       stopRecording();
@@ -112,53 +184,20 @@ function keyPressed() {
   }
 }
 
-function setupRecorder() {
-  let stream = document.querySelector('canvas').captureStream(60);
-  recorder = new MediaRecorder(stream, { mimeType: 'video/webm; codecs=vp9' });
-  
-  recorder.ondataavailable = e => {
-    if (e.data.size) {
-      chunks.push(e.data);
-    }
-  };
-  
-  recorder.onstop = exportVideo;
-}
-
 function startRecording() {
-  console.log("Recording started");
   chunks = [];
-  recording = true;
+  recordingEnabled = true;
   recorder.start();
+  console.log("Recording started");
 }
 
 function stopRecording() {
-  console.log("Recording stopped");
-  recording = false;
+  recordingEnabled = false;
   recorder.stop();
+  console.log("Recording stopped");
 }
 
-function exportVideo() {
-  let blob = new Blob(chunks, { 'type' : 'video/webm' });
-  let url = URL.createObjectURL(blob);
-  let a = document.createElement('a');
-  document.body.appendChild(a);
-  a.style.display = 'none';
-  a.href = url;
-  a.download = '3d_orbit.webm';
-  a.click();
-  window.URL.revokeObjectURL(url);
-}
-
-function takeScreenshot() {
-  let canvas = document.querySelector('canvas');
-  let dataURL = canvas.toDataURL('image/png');
-  let a = document.createElement('a');
-  document.body.appendChild(a);
-  a.style.display = 'none';
-  a.href = dataURL;
-  a.download = '3d_orbit_screenshot.png';
-  a.click();
-  document.body.removeChild(a);
-  console.log("Screenshot saved");
+// Add a window resize handler
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
 }
