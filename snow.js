@@ -2,7 +2,7 @@ const CANVAS_WIDTH = 1280;
 const CANVAS_HEIGHT = 720;
 
 let snowflakes = [];
-const numSnowflakes = 200;
+const numSnowflakes = 500;
 let recording = false;
 let recorder;
 let chunks = [];
@@ -15,17 +15,17 @@ function setup() {
     snowflakes.push({
       x: random(width),
       y: random(height),
-      size: random(2, 8),
+      size: random(2, 4),
       speed: random(1, 3),
       angle: random(PI/4, PI/2),
-      color: color(255, 255, 255, random(200, 255)) // White color for snow
+      color: color(255, 255, 255, random(100, 200)) // White color for snow
     });
   }
   setupRecorder();
 }
 
 function draw() {
-  background(0, 0, 50); // Dark blue background for night sky
+  background(0, 0, 0); // Dark blue background for night sky
   
   for (let snowflake of snowflakes) {
     drawSnowflake(snowflake);
